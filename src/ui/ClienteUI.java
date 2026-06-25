@@ -2,6 +2,7 @@ package ui;
 
 import cliente.ClienteMensagens;
 import model.Contato;
+import model.Mensagem;
 import model.StatusCliente;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -9,6 +10,7 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Collection;
+import java.util.List;
 
 public class ClienteUI extends JFrame {
     
@@ -19,7 +21,6 @@ public class ClienteUI extends JFrame {
     private static final Color COR_PAINEL = new Color(255, 255, 255);
     private static final Color COR_TEXTO = new Color(50, 45, 40);
     private static final Color COR_BORDA = new Color(255, 200, 150);
-    private static final Color COR_HOVER = new Color(255, 160, 50);
     
     private ClienteMensagens controller;
     
@@ -33,6 +34,7 @@ public class ClienteUI extends JFrame {
     private JButton btnStatus;
     private JLabel lblStatus;
     private JLabel lblTitulo;
+    private JLabel lblContatoAtual;
     
     private String contatoSelecionado;
     
@@ -65,12 +67,21 @@ public class ClienteUI extends JFrame {
             new EmptyBorder(12, 20, 12, 20)
         ));
         
-        // Título com ícone
-        lblTitulo = new JLabel("Chat - " + controller.getNome());
+        JPanel tituloPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        tituloPanel.setBackground(COR_PAINEL);
+        
+        lblTitulo = new JLabel("Chat");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblTitulo.setForeground(COR_PRIMARIA_ESCURA);
         
-        // Status com bolinha
+        lblContatoAtual = new JLabel("");
+        lblContatoAtual.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblContatoAtual.setForeground(COR_TEXTO);
+        
+        tituloPanel.add(lblTitulo);
+        tituloPanel.add(Box.createHorizontalStrut(10));
+        tituloPanel.add(lblContatoAtual);
+        
         JPanel statusPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         statusPanel.setBackground(COR_PAINEL);
         
@@ -85,7 +96,7 @@ public class ClienteUI extends JFrame {
         statusPanel.add(lblStatus);
         statusPanel.add(btnStatus);
         
-        panelTopo.add(lblTitulo, BorderLayout.WEST);
+        panelTopo.add(tituloPanel, BorderLayout.WEST);
         panelTopo.add(statusPanel, BorderLayout.EAST);
         
         JPanel panelContatos = new JPanel(new BorderLayout(5, 5));
@@ -96,7 +107,7 @@ public class ClienteUI extends JFrame {
         ));
         panelContatos.setPreferredSize(new Dimension(220, 0));
         
-        JLabel lblContatos = new JLabel("CONTATOS");
+        JLabel lblContatos = new JLabel("Contatos");
         lblContatos.setFont(new Font("Segoe UI", Font.BOLD, 13));
         lblContatos.setForeground(COR_PRIMARIA_ESCURA);
         lblContatos.setBorder(new EmptyBorder(0, 5, 8, 0));
@@ -109,8 +120,6 @@ public class ClienteUI extends JFrame {
         listaContatos.setBackground(COR_FUNDO);
         listaContatos.setForeground(COR_TEXTO);
         listaContatos.setFixedCellHeight(30);
-        
-        // Cores de seleção laranja
         listaContatos.setSelectionBackground(COR_PRIMARIA_CLARA);
         listaContatos.setSelectionForeground(COR_TEXTO);
         
@@ -118,14 +127,12 @@ public class ClienteUI extends JFrame {
         scrollContatos.setBorder(new LineBorder(COR_BORDA, 1, true));
         scrollContatos.getViewport().setBackground(COR_FUNDO);
         
-        // Botões de contato
         JPanel panelBotoesContatos = new JPanel(new GridLayout(1, 2, 5, 0));
         panelBotoesContatos.setBackground(COR_PAINEL);
         panelBotoesContatos.setBorder(new EmptyBorder(8, 0, 0, 0));
         
         btnAdicionar = criarBotaoLaranja("Adicionar", COR_PRIMARIA);
         btnRemover = criarBotaoLaranja("Remover", new Color(200, 80, 80));
-        
         btnAdicionar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnRemover.setFont(new Font("Segoe UI", Font.BOLD, 12));
         
@@ -135,9 +142,6 @@ public class ClienteUI extends JFrame {
         panelContatos.add(scrollContatos, BorderLayout.CENTER);
         panelContatos.add(panelBotoesContatos, BorderLayout.SOUTH);
         
-        // ==========================================
-        // PAINEL CENTRAL - CHAT
-        // ==========================================
         JPanel panelChat = new JPanel(new BorderLayout(5, 5));
         panelChat.setBackground(COR_PAINEL);
         panelChat.setBorder(BorderFactory.createCompoundBorder(
@@ -145,7 +149,6 @@ public class ClienteUI extends JFrame {
             new EmptyBorder(10, 10, 10, 10)
         ));
         
-        // Área de chat
         areaChat = new JTextArea();
         areaChat.setEditable(false);
         areaChat.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -172,12 +175,13 @@ public class ClienteUI extends JFrame {
         campoMensagem.setBackground(COR_FUNDO);
         campoMensagem.setForeground(COR_TEXTO);
         campoMensagem.setCaretColor(COR_PRIMARIA);
+        campoMensagem.setEnabled(false);
         
         btnEnviar = criarBotaoLaranja("Enviar", COR_PRIMARIA);
         btnEnviar.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnEnviar.setPreferredSize(new Dimension(100, 40));
-        
         btnEnviar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnEnviar.setEnabled(false);
         
         panelEnvio.add(campoMensagem, BorderLayout.CENTER);
         panelEnvio.add(btnEnviar, BorderLayout.EAST);
@@ -189,8 +193,13 @@ public class ClienteUI extends JFrame {
         add(panelContatos, BorderLayout.WEST);
         add(panelChat, BorderLayout.CENTER);
         
-        areaChat.append("Bem-vindo ao Chat Laranja!\n");
-        areaChat.append("Adicione contatos para começar a conversar.\n\n");
+        mostrarMensagemBoasVindas();
+    }
+    
+    private void mostrarMensagemBoasVindas() {
+        areaChat.setText("");
+        areaChat.append("Bem-vindo ao Chat!\n");
+        areaChat.append("Selecione um contato para começar a conversar.\n\n");
     }
     
     private JButton criarBotaoLaranja(String texto, Color corFundo) {
@@ -208,17 +217,9 @@ public class ClienteUI extends JFrame {
         botao.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
                 botao.setBackground(corFundo.brighter());
-                botao.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(corFundo.darker().darker(), 2, true),
-                    new EmptyBorder(7, 14, 7, 14)
-                ));
             }
             public void mouseExited(java.awt.event.MouseEvent evt) {
                 botao.setBackground(corFundo);
-                botao.setBorder(BorderFactory.createCompoundBorder(
-                    new LineBorder(corFundo.darker(), 1, true),
-                    new EmptyBorder(8, 15, 8, 15)
-                ));
             }
         });
         
@@ -232,10 +233,15 @@ public class ClienteUI extends JFrame {
                 if (selected != null) {
                     String nomeLimpo = selected.replaceAll("[🟢🔴]", "").trim();
                     contatoSelecionado = nomeLimpo;
-                    System.out.println("Contato selecionado: " + contatoSelecionado);
-                    setTitle("Chat - " + controller.getNome() + " → " + contatoSelecionado);
-                } else {
-                    setTitle("Chat - " + controller.getNome());
+                    
+                    controller.selecionarContato(nomeLimpo);
+                    
+                    lblContatoAtual.setText("→ " + nomeLimpo);
+                    setTitle("Chat - " + controller.getNome() + " → " + nomeLimpo);
+                    
+                    campoMensagem.setEnabled(true);
+                    btnEnviar.setEnabled(true);
+                    campoMensagem.requestFocus();
                 }
             }
         });
@@ -258,7 +264,7 @@ public class ClienteUI extends JFrame {
             if (selected != null) {
                 String nomeLimpo = selected.replaceAll("[🟢🔴]", "").trim();
                 int confirm = JOptionPane.showConfirmDialog(this, 
-                    "Remover contato '" + nomeLimpo + "'?", 
+                    "Remover contato '" + nomeLimpo + "'?\nO histórico da conversa será apagado.", 
                     "Confirmar", 
                     JOptionPane.YES_NO_OPTION,
                     JOptionPane.WARNING_MESSAGE);
@@ -307,28 +313,66 @@ public class ClienteUI extends JFrame {
         campoMensagem.setText("");
     }
     
+    public void mostrarConversa(String nomeContato, List<Mensagem> mensagens) {
+        SwingUtilities.invokeLater(() -> {
+            areaChat.setText("");
+            
+            if (mensagens == null || mensagens.isEmpty()) {
+                areaChat.append("Início da conversa com " + nomeContato + "\n");
+                areaChat.append("Envie uma mensagem para começar!\n\n");
+            } else {
+                for (Mensagem m : mensagens) {
+                    String prefixo = m.getRemetente().equals("Eu") ? "" : "";
+                    areaChat.append(prefixo + " " + m.getRemetente() + ": " + m.getConteudo() + "\n");
+                }
+            }
+            
+            areaChat.setCaretPosition(areaChat.getDocument().getLength());
+        });
+    }
+    
+    public void limparChat() {
+        SwingUtilities.invokeLater(() -> {
+            areaChat.setText("");
+            lblContatoAtual.setText("");
+            setTitle("💬 Chat - " + controller.getNome());
+            campoMensagem.setEnabled(false);
+            btnEnviar.setEnabled(false);
+            mostrarMensagemBoasVindas();
+        });
+    }
+    
     public void atualizarContatos(Collection<Contato> contatos) {
         SwingUtilities.invokeLater(() -> {
+            String contatoSelecionadoAntes = contatoSelecionado;
             modelContatos.clear();
+            
             for (Contato c : contatos) {
                 String icone = c.getStatus() == StatusCliente.ONLINE ? "🟢" : "🔴";
                 modelContatos.addElement(icone + " " + c.getNome());
             }
             
-            if (contatoSelecionado != null) {
+            if (contatoSelecionadoAntes != null) {
                 boolean contatoAindaExiste = false;
                 for (Contato c : contatos) {
-                    if (c.getNome().equals(contatoSelecionado)) {
+                    if (c.getNome().equals(contatoSelecionadoAntes)) {
                         contatoAindaExiste = true;
                         break;
                     }
                 }
+                
                 if (!contatoAindaExiste) {
                     contatoSelecionado = null;
-                    areaChat.setText("");
-                    areaChat.append("Bem-vindo ao Chat Laranja!\n");
-                    areaChat.append("Adicione contatos para começar a conversar.\n\n");
-                    setTitle("💬 Chat - " + controller.getNome());
+                    limparChat();
+                    listaContatos.clearSelection();
+                } else {
+                    for (int i = 0; i < modelContatos.size(); i++) {
+                        String item = modelContatos.get(i);
+                        if (item.contains(contatoSelecionadoAntes)) {
+                            listaContatos.setSelectedIndex(i);
+                            break;
+                        }
+                    }
                 }
             }
         });
@@ -350,7 +394,7 @@ public class ClienteUI extends JFrame {
     
     public void adicionarMensagemChat(String remetente, String conteudo) {
         SwingUtilities.invokeLater(() -> {
-            String prefixo = remetente.equals("Eu") ? "🧡" : "💬";
+            String prefixo = remetente.equals("Eu") ? "" : "";
             areaChat.append(prefixo + " " + remetente + ": " + conteudo + "\n");
             areaChat.setCaretPosition(areaChat.getDocument().getLength());
         });
@@ -361,8 +405,10 @@ public class ClienteUI extends JFrame {
             if (status == StatusCliente.ONLINE) {
                 lblStatus.setText("● ONLINE");
                 lblStatus.setForeground(new Color(0, 180, 0));
-                //campoMensagem.setEnabled(true);
-                //btnEnviar.setEnabled(true);
+                //if (contatoSelecionado != null) {
+                //    campoMensagem.setEnabled(true);
+                //    btnEnviar.setEnabled(true);
+                //}
             } else {
                 lblStatus.setText("● OFFLINE");
                 lblStatus.setForeground(Color.RED);

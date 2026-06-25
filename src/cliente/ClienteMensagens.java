@@ -15,12 +15,16 @@ public class ClienteMensagens {
     private ClienteRMI clienteRMI;
     private StatusCliente status;
     private ConcurrentHashMap<String, Contato> contatos;
+    private ConcurrentHashMap<String, List<Mensagem>> conversas;
     private ClienteUI ui;
+    private String contatoAtual;
     
     public ClienteMensagens(String nome, String host) {
         this.nome = nome;
         this.status = StatusCliente.ONLINE;
         this.contatos = new ConcurrentHashMap<>();
+        this.conversas = new ConcurrentHashMap<>();
+        this.contatoAtual = null;
         
         this.ui = new ClienteUI(this);
         this.ui.setVisible(true);
@@ -33,26 +37,6 @@ public class ClienteMensagens {
         }
     }
     
-    
-    public void adicionarContato(String nomeContato) {
-        if (clienteRMI != null) {
-            clienteRMI.adicionarContato(nomeContato);
-        }
-    }
-    
-    public void removerContato(String nomeContato) {
-        if (clienteRMI != null) {
-            clienteRMI.removerContato(nomeContato);
-        }
-    }
-    
-    public void enviarMensagem(String destinatario, String conteudo) {
-        if (clienteRMI != null) {
-            clienteRMI.enviarMensagem(destinatario, conteudo);
-            ui.adicionarMensagemChat("Eu", conteudo);
-        }
-    }
-    
     public void mudarStatus(StatusCliente novoStatus) {
         this.status = novoStatus;
         if (clienteRMI != null) {
@@ -61,10 +45,56 @@ public class ClienteMensagens {
         ui.atualizarStatus(novoStatus);
     }
     
+    public void selecionarContato(String nomeContato) {
+        this.contatoAtual = nomeContato;
+        
+        conversas.putIfAbsent(nomeContato, new java.util.ArrayList<>());
+        
+        ui.mostrarConversa(nomeContato, conversas.get(nomeContato));
+    }
+    
+    public List<Mensagem> getConversa(String nomeContato) {
+        return conversas.getOrDefault(nomeContato, new java.util.ArrayList<>());
+    }
+    
+    public void adicionarMensagem(String contato, String remetente, String conteudo) {
+        Mensagem msg = new Mensagem(remetente, contato, conteudo);
+        conversas.computeIfAbsent(contato, k -> new java.util.ArrayList<>()).add(msg);
+        
+        if (contato.equals(contatoAtual)) {
+            ui.adicionarMensagemChat(remetente, conteudo);
+        }
+    }
+    
+    public void adicionarContato(String nomeContato) {
+        if (clienteRMI != null) {
+            clienteRMI.adicionarContato(nomeContato);
+            conversas.putIfAbsent(nomeContato, new java.util.ArrayList<>());
+        }
+    }
+    
+    public void removerContato(String nomeContato) {
+        if (clienteRMI != null) {
+            clienteRMI.removerContato(nomeContato);
+            conversas.remove(nomeContato);
+            
+            if (contatoAtual != null && contatoAtual.equals(nomeContato)) {
+                contatoAtual = null;
+                ui.limparChat();
+            }
+        }
+    }
+    
+    public void enviarMensagem(String destinatario, String conteudo) {
+        if (clienteRMI != null) {
+            adicionarMensagem(destinatario, "Eu", conteudo);
+            clienteRMI.enviarMensagem(destinatario, conteudo);
+        }
+    }
     
     public void receberMensagem(Mensagem mensagem) {
         SwingUtilities.invokeLater(() -> {
-            ui.adicionarMensagemChat(mensagem.getRemetente(), mensagem.getConteudo());
+            adicionarMensagem(mensagem.getRemetente(), mensagem.getRemetente(), mensagem.getConteudo());
         });
     }
     
