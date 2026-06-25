@@ -20,6 +20,7 @@ public class ServidorMensagens extends UnicastRemoteObject implements IServidorM
     private Map<Integer, String> nomesClientes;
     private Map<String, StatusCliente> statusClientes;
     private Map<String, List<Contato>> listaContatos;
+    private Map<String, List<Mensagem>> mensagensPendentes;
     private int proximoId = 1;
     
     private GerenciadorFilas gerenciadorFilas;
@@ -30,6 +31,7 @@ public class ServidorMensagens extends UnicastRemoteObject implements IServidorM
         this.nomesClientes = new ConcurrentHashMap<>();
         this.statusClientes = new ConcurrentHashMap<>();
         this.listaContatos = new ConcurrentHashMap<>();
+        this.mensagensPendentes = new ConcurrentHashMap<>();
         
         try {
             this.gerenciadorFilas = new GerenciadorFilas();
@@ -104,6 +106,8 @@ public class ServidorMensagens extends UnicastRemoteObject implements IServidorM
             System.out.println("Cliente " + nome + " agora está " + status);
             
             if (status == StatusCliente.ONLINE) {
+                processarMensagensPendentes(nome);
+                
                 entregarMensagensOffline(idCliente);
             }
         }
@@ -205,12 +209,17 @@ public class ServidorMensagens extends UnicastRemoteObject implements IServidorM
         String remetente = nomesClientes.get(idCliente);
         if (remetente == null) return;
         
+        StatusCliente statusRemetente = statusClientes.get(remetente);
+        if (statusRemetente == StatusCliente.OFFLINE) {
+            armazenarMensagemPendente(remetente, destinatario, conteudo);
+            return;
+        }
+        
         Mensagem mensagem = new Mensagem(remetente, destinatario, conteudo);
         
         StatusCliente statusDestinatario = statusClientes.get(destinatario);
         
         if (statusDestinatario == StatusCliente.ONLINE) {
-            // Entregar imediatamente
             for (Map.Entry<Integer, IClienteCallback> entry : clientesConectados.entrySet()) {
                 String nome = nomesClientes.get(entry.getKey());
                 if (nome != null && nome.equals(destinatario)) {
@@ -268,6 +277,49 @@ public class ServidorMensagens extends UnicastRemoteObject implements IServidorM
             
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void armazenarMensagemPendente(String remetente, String destinatario, String conteudo) {
+        Mensagem mensagem = new Mensagem(remetente, destinatario, conteudo);
+        mensagensPendentes.computeIfAbsent(remetente, k -> new ArrayList<>()).add(mensagem);
+    }
+
+    private void processarMensagensPendentes(String remetente) {
+        List<Mensagem> pendentes = mensagensPendentes.remove(remetente);
+        if (pendentes == null || pendentes.isEmpty()) return;
+        
+        System.out.println("Processando " + pendentes.size() + " mensagens pendentes para " + remetente);
+        
+        for (Mensagem msg : pendentes) {
+            String destinatario = msg.getDestinatario();
+            StatusCliente statusDestinatario = statusClientes.get(destinatario);
+            
+            if (statusDestinatario == StatusCliente.ONLINE) {
+                for (Map.Entry<Integer, IClienteCallback> entry : clientesConectados.entrySet()) {
+                    String nome = nomesClientes.get(entry.getKey());
+                    if (nome != null && nome.equals(destinatario)) {
+                        try {
+                            entry.getValue().receberMensagem(msg);
+                            System.out.println("Mensagem pendente entregue para " + destinatario);
+                        } catch (RemoteException e) {
+                            try {
+                                gerenciadorFilas.enviarMensagemFila(destinatario, msg);
+                            } catch (Exception ex) {
+                                System.err.println("Erro ao enviar mensagem pendente para fila: " + ex.getMessage());
+                            }
+                        }
+                        break;
+                    }
+                }
+            } else {
+                try {
+                    gerenciadorFilas.enviarMensagemFila(destinatario, msg);
+                    System.out.println("Mensagem pendente enviada para fila de " + destinatario + " (offline)");
+                } catch (Exception e) {
+                    System.err.println("Erro ao enviar mensagem pendente para fila: " + e.getMessage());
+                }
+            }
         }
     }
 }
